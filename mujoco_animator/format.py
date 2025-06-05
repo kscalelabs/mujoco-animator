@@ -11,6 +11,10 @@ which are each formatted as follows:
    degree of freedom
 """
 
+__all__ = [
+    "MjAnim",
+]
+
 import math
 import struct
 from dataclasses import dataclass

@@ -4,7 +4,7 @@ import math
 import random
 from pathlib import Path
 
-from mujoco_animator.format import MjAnim
+from mujoco_animator import MjAnim
 
 
 def test_save_and_load(tmpdir: Path) -> None:
@@ -21,8 +21,8 @@ def test_save_and_load(tmpdir: Path) -> None:
     anim2 = MjAnim.load(tmpdir / "test.mjanim")
     assert anim == anim2
 
-    nd_array = anim.to_numpy(dt, interp="cubic")
+    nd_array = anim.to_numpy(dt, interp="cubic", loop=False)
     assert nd_array.shape == (math.ceil(total_tsz / dt), num_dofs)
 
-    nd_array = anim.to_numpy(dt, interp="linear")
+    nd_array = anim.to_numpy(dt, interp="linear", loop=False)
     assert nd_array.shape == (math.ceil(total_tsz / dt), num_dofs)
