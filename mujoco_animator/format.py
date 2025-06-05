@@ -83,20 +83,25 @@ class MjAnim:
             return False
         return self.num_dofs == other.num_dofs and self.frames == other.frames
 
-    def to_numpy(self, dt: float, interp: Literal["cubic", "linear"] = "cubic") -> np.ndarray:
+    def to_numpy(self, dt: float, interp: Literal["cubic", "linear"] = "cubic", loop: bool = True) -> np.ndarray:
         """Convert animation frames to a numpy array with evenly spaced time steps.
 
         Args:
             dt: Time step in seconds between each frame in the output array.
             interp: Interpolation method to use ("cubic" or "linear").
+            loop: Whether to loop the animation, by having the last frame return
+                to the first frame.
 
         Returns:
             A numpy array of shape (num_steps, num_dofs) containing the joint
             positions at each time step. The positions are interpolated using
-        the specified method.
+            the specified method.
         """
         if not self.frames:
             return np.zeros((0, self.num_dofs))
+
+        if loop:
+            self.frames.append(Frame(0.0, self.frames[0].positions))
 
         # Calculate total duration and number of steps
         total_duration = sum(frame.length for frame in self.frames)

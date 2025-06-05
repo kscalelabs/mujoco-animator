@@ -109,18 +109,13 @@ class MjAnimator(QMainWindow):
         side_panel.setMinimumWidth(250)
         side_panel_layout = QVBoxLayout(side_panel)
 
-        # Title
-        title = QLabel("DOF Values")
-        title.setStyleSheet("font-weight: bold; font-size: 14px; margin-bottom: 10px;")
-        side_panel_layout.addWidget(title)
-
         # Frame info
         self.frame_info = QLabel("Frame: 0 / 1")
         side_panel_layout.addWidget(self.frame_info)
 
         # Selected DOF info
         self.selected_dof_label = QLabel(f"Selected DOF: {self.state.selected_dof}")
-        self.selected_dof_label.setStyleSheet("color: blue; font-weight: bold;")
+        self.selected_dof_label.setStyleSheet("color: cyan; font-weight: bold;")
         side_panel_layout.addWidget(self.selected_dof_label)
 
         # Create scroll area for DOF controls
@@ -130,8 +125,12 @@ class MjAnimator(QMainWindow):
 
         # Create DOF spinboxes
         self.dof_spinboxes = []
+        self.dof_widgets = []  # Store references to the container widgets
         for i in range(self.model.nq):
-            dof_layout = QHBoxLayout()
+            # Create container widget for this DOF
+            dof_container = QWidget()
+            dof_layout = QHBoxLayout(dof_container)
+            dof_layout.setContentsMargins(2, 2, 2, 2)  # Small margins
 
             # Get DOF/joint name
             dof_name = self.get_dof_name(i)
@@ -151,12 +150,17 @@ class MjAnimator(QMainWindow):
             self.dof_spinboxes.append(spinbox)
             dof_layout.addWidget(spinbox)
 
-            scroll_layout.addLayout(dof_layout)
+            # Store reference to container widget and add to scroll layout
+            self.dof_widgets.append(dof_container)
+            scroll_layout.addWidget(dof_container)
 
         scroll_widget.setLayout(scroll_layout)
         scroll_area.setWidget(scroll_widget)
         scroll_area.setWidgetResizable(True)
         side_panel_layout.addWidget(scroll_area)
+
+        # Store reference to scroll area for auto-scrolling
+        self.scroll_area = scroll_area
 
         # Add side panel to main layout
         self._main_layout.addWidget(side_panel, stretch=1)
@@ -255,19 +259,19 @@ class MjAnimator(QMainWindow):
                 self.delete_frame()
             case Qt.Key.Key_S if mods & Qt.KeyboardModifier.ControlModifier:
                 self.save_animation()
-            case Qt.Key.Key_W:
+            case Qt.Key.Key_E:
                 if mods & Qt.KeyboardModifier.ShiftModifier:
                     self.adjust_dof(0.01)
                 else:
                     self.adjust_dof(0.1)
-            case Qt.Key.Key_S:
+            case Qt.Key.Key_Q:
                 if mods & Qt.KeyboardModifier.ShiftModifier:
                     self.adjust_dof(-0.01)
                 else:
                     self.adjust_dof(-0.1)
-            case Qt.Key.Key_Q:
+            case Qt.Key.Key_W:
                 self.on_frame_changed(self.state.current_frame - 1)
-            case Qt.Key.Key_E:
+            case Qt.Key.Key_S:
                 self.on_frame_changed(self.state.current_frame + 1)
             case Qt.Key.Key_A:
                 self.on_dof_changed(self.state.selected_dof - 1)
@@ -333,6 +337,12 @@ class MjAnimator(QMainWindow):
                     spinbox.setStyleSheet("")
 
                 spinbox.blockSignals(False)
+
+        # Auto-scroll to keep selected DOF visible
+        if hasattr(self, "scroll_area") and 0 <= self.state.selected_dof < len(self.dof_widgets):
+            selected_widget = self.dof_widgets[self.state.selected_dof]
+            # Use ensureWidgetVisible to scroll the selected DOF into view
+            self.scroll_area.ensureWidgetVisible(selected_widget, 50, 50)  # 50px margin
 
     def adjust_dof(self, delta: float) -> None:
         """Adjust the current DOF value."""
