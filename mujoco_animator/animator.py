@@ -1,16 +1,13 @@
 # ruff: noqa: N802
 """Core animator functionality for creating and editing animations."""
 
-import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import mujoco
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QShowEvent
 from PySide6.QtWidgets import (
-    QApplication,
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
@@ -37,7 +34,7 @@ class AnimationState:
 class MjAnimator(QMainWindow):
     """Main window for the Mujoco Animator tool."""
 
-    def __init__(self, model_path: Path, output_path: Optional[Path] = None) -> None:
+    def __init__(self, model_path: Path, output_path: Path | None = None) -> None:
         """Initialize the animator.
 
         Args:
@@ -53,8 +50,7 @@ class MjAnimator(QMainWindow):
         self.model = mujoco.MjModel.from_xml_path(str(model_path))
         self.data = mujoco.MjData(self.model)
 
-        # Initialize animation
-        self.state = AnimationState(MjAnim(self.model.nq))
+        # Store output path
         self.output_path = output_path
 
         # Create central widget and layout first
@@ -80,10 +76,22 @@ class MjAnimator(QMainWindow):
         self.connect_signals()
 
         # Set minimum size to ensure OpenGL context has space
-        self.setMinimumSize(800, 600)  # Increased width for side panel"
+        self.setMinimumSize(800, 600)  # Increased width for side panel
 
-        # Adds the first frame.
-        self.add_frame()
+        # Initialize animation - load existing or create new
+        if self.output_path and self.output_path.exists():
+            self.state = AnimationState(MjAnim.load(self.output_path))
+            if not self.state.anim.frames:
+                raise ValueError("Animation file is empty")
+            if self.state.anim.num_dofs != self.model.nq:
+                raise ValueError("Animation file does not match model")
+            self.state.current_frame = 0
+            self.data.qpos[:] = self.state.anim.frames[0].positions
+            self.update_side_panel()
+
+        else:
+            self.state = AnimationState(MjAnim(self.model.nq))
+            self.add_frame()
 
     def showEvent(self, event: QShowEvent) -> None:
         """Handle show event to ensure proper OpenGL initialization."""
@@ -171,9 +179,6 @@ class MjAnimator(QMainWindow):
 
         # Add side panel to main layout
         self._main_layout.addWidget(side_panel, stretch=1)
-
-        # Initialize the side panel with current values
-        self.update_side_panel()
 
     def get_dof_name(self, dof_index: int) -> str:
         """Get a meaningful name for a DOF."""
@@ -317,6 +322,7 @@ class MjAnimator(QMainWindow):
             self.state.anim.frames[self.state.current_frame].length += value_delta
             self.viewer.update()
             self.update_side_panel()
+            self.auto_save()
 
     def on_dof_changed(self, value: int) -> None:
         """Handle DOF selection change."""
@@ -332,6 +338,7 @@ class MjAnimator(QMainWindow):
             self.state.anim.frames[self.state.current_frame].positions[dof] = value
             self.data.qpos[dof] = value
             self.viewer.update()
+            self.auto_save()
 
     def on_frame_changed(self, value: int) -> None:
         """Handle frame selection change."""
@@ -394,6 +401,7 @@ class MjAnimator(QMainWindow):
         self.data.qpos[:] = frame.positions
         self.viewer.update()
         self.update_side_panel()
+        self.auto_save()
 
     def add_frame(self) -> None:
         """Add a new frame to the animation."""
@@ -404,6 +412,7 @@ class MjAnimator(QMainWindow):
         # Update current frame to the newly added one
         self.state.current_frame = index
         self.update_side_panel()
+        self.auto_save()
 
     def delete_frame(self) -> None:
         """Delete the current frame."""
@@ -414,6 +423,7 @@ class MjAnimator(QMainWindow):
             self.state.current_frame -= 1
         self.data.qpos[:] = self.state.anim.frames[self.state.current_frame].positions
         self.update_side_panel()
+        self.auto_save()
 
     def save_animation(self) -> None:
         """Save the animation to file."""
@@ -421,17 +431,7 @@ class MjAnimator(QMainWindow):
             return
         self.state.anim.save(self.output_path)
 
-
-def main() -> None:
-    app = QApplication(sys.argv)
-
-    if len(sys.argv) < 2:
-        print("Usage: python -m mujoco_animator.animator <model_path> [output_path]")
-        sys.exit(1)
-
-    model_path = Path(sys.argv[1])
-    output_path = Path(sys.argv[2]) if len(sys.argv) > 2 else None
-
-    animator = MjAnimator(model_path, output_path)
-    animator.show()
-    sys.exit(app.exec())
+    def auto_save(self) -> None:
+        """Automatically save the animation if an output path is set."""
+        if self.output_path is not None and self.state.anim.frames:
+            self.state.anim.save(self.output_path)

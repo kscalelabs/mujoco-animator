@@ -13,6 +13,7 @@ __pycache__/
 
 # Databases
 *.db
+*.mjanim
 
 # Build artifacts
 build/

@@ -21,7 +21,7 @@ def main() -> int:
     # Parse arguments
     parser = argparse.ArgumentParser(description="Mujoco Animator")
     parser.add_argument("model", type=str)
-    parser.add_argument("--output", type=Path, default=Path("output.mp4"))
+    parser.add_argument("--output", type=Path, default=Path("output.mjanim"))
     args = parser.parse_args()
 
     # Create and show animator
