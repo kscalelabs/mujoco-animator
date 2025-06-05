@@ -21,5 +21,8 @@ def test_save_and_load(tmpdir: Path) -> None:
     anim2 = MjAnim.load(tmpdir / "test.mjanim")
     assert anim == anim2
 
-    nd_array = anim.to_numpy(dt)
+    nd_array = anim.to_numpy(dt, interp="cubic")
+    assert nd_array.shape == (math.ceil(total_tsz / dt), num_dofs)
+
+    nd_array = anim.to_numpy(dt, interp="linear")
     assert nd_array.shape == (math.ceil(total_tsz / dt), num_dofs)

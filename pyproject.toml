@@ -28,6 +28,7 @@ namespace_packages = false
 module = [
     "glfw.*",
     "mujoco.*",
+    "scipy.*",
 ]
 ignore_missing_imports = true
 
