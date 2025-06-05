@@ -1,29 +1,40 @@
 """Defines the command-line interface for interacting with Mujoco models."""
 
 import argparse
+import sys
 from pathlib import Path
 
-import mujoco
+from PySide6.QtWidgets import QApplication
 
-from mujoco_animator.viewer import GlfwMujocoViewer
+from mujoco_animator.animator import MjAnimator
 
 
-def main() -> None:
+def main() -> int:
+    """Main entry point.
+
+    Returns:
+        int: Exit code (0 for success, non-zero for error)
+    """
+    # Create Qt application first
+    app = QApplication(sys.argv)
+
+    # Parse arguments
     parser = argparse.ArgumentParser(description="Mujoco Animator")
     parser.add_argument("model", type=str)
     parser.add_argument("--output", type=Path, default=Path("output.mp4"))
     args = parser.parse_args()
 
-    model = mujoco.MjModel.from_xml_path(args.model)
-    data = mujoco.MjData(model)
-    mujoco.mj_step(model, data)
+    try:
+        # Create and show animator
+        animator = MjAnimator(Path(args.model), args.output)
+        animator.show()
 
-    viewer = GlfwMujocoViewer(model, data)
-
-    while viewer.is_alive:
-        mujoco.mj_step(model, data)
-        viewer.render()
+        # Run the event loop
+        return app.exec()
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
