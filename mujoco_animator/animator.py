@@ -12,10 +12,8 @@ from PySide6.QtGui import QCloseEvent, QShowEvent
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
-    QLabel,
     QMainWindow,
     QPushButton,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -56,6 +54,9 @@ class MjAnimator(QMainWindow):
         self.state = AnimationState(MjAnim(self.model.nq))
         self.output_path = output_path
 
+        # Add first frame.
+        self.add_frame()
+
         # Create central widget and layout first
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -85,6 +86,8 @@ class MjAnimator(QMainWindow):
         # Let Qt handle OpenGL initialization automatically
         if hasattr(self, "viewer"):
             self.viewer.update()
+            # Ensure the viewer has focus to receive key events
+            self.viewer.setFocus()
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """Handle window close event."""
@@ -96,24 +99,6 @@ class MjAnimator(QMainWindow):
         """Set up the user interface."""
         # Create controls
         controls = QHBoxLayout()
-
-        # DOF selection
-        dof_layout = QHBoxLayout()
-        dof_layout.addWidget(QLabel("DOF:"))
-        self.dof_spinbox = QSpinBox()
-        self.dof_spinbox.setRange(0, self.model.nq - 1)
-        self.dof_spinbox.valueChanged.connect(self.on_dof_changed)
-        dof_layout.addWidget(self.dof_spinbox)
-        controls.addLayout(dof_layout)
-
-        # Frame controls
-        frame_layout = QHBoxLayout()
-        frame_layout.addWidget(QLabel("Frame:"))
-        self.frame_spinbox = QSpinBox()
-        self.frame_spinbox.setRange(0, 0)  # Will be updated when frames are added
-        self.frame_spinbox.valueChanged.connect(self.on_frame_changed)
-        frame_layout.addWidget(self.frame_spinbox)
-        controls.addLayout(frame_layout)
 
         # Buttons
         self.add_frame_btn = QPushButton("Add Frame (Space)")
@@ -132,29 +117,35 @@ class MjAnimator(QMainWindow):
 
     def handle_key(self, key: int, scancode: int, action: int, mods: Qt.KeyboardModifier) -> None:
         """Handle keyboard input."""
+        print("action:", action)
+
         if action != 1:  # Only handle key press events
             return
 
-        if key == Qt.Key.Key_Space:
-            self.add_frame()
-        elif key == Qt.Key.Key_S and (mods & Qt.KeyboardModifier.ControlModifier):
-            self.save_animation()
-        elif key == Qt.Key.Key_Left:
-            self.frame_spinbox.setValue(max(0, self.frame_spinbox.value() - 1))
-        elif key == Qt.Key.Key_Right:
-            self.frame_spinbox.setValue(min(len(self.state.anim.frames) - 1, self.frame_spinbox.value() + 1))
-        elif key == Qt.Key.Key_Up:
-            self.dof_spinbox.setValue(min(self.model.nq - 1, self.dof_spinbox.value() + 1))
-        elif key == Qt.Key.Key_Down:
-            self.dof_spinbox.setValue(max(0, self.dof_spinbox.value() - 1))
-        elif key in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
-            self.adjust_dof(0.1)
-        elif key == Qt.Key.Key_Minus:
-            self.adjust_dof(-0.1)
+        match key:
+            case Qt.Key.Key_Space:
+                self.add_frame()
+            case Qt.Key.Key_S if mods & Qt.KeyboardModifier.ControlModifier:
+                self.save_animation()
+            case Qt.Key.Key_Plus | Qt.Key.Key_Equal:
+                self.adjust_dof(0.1)
+            case Qt.Key.Key_Minus:
+                self.adjust_dof(-0.1)
+            case Qt.Key.Key_Left:
+                self.on_dof_changed(self.state.selected_dof - 1)
+            case Qt.Key.Key_Right:
+                self.on_dof_changed(self.state.selected_dof + 1)
+            case Qt.Key.Key_Escape:
+                self.close()
+            case _:
+                pass
 
     def on_dof_changed(self, value: int) -> None:
         """Handle DOF selection change."""
-        self.state.selected_dof = value
+        if 0 <= value < self.model.nq:
+            self.state.selected_dof = value
+            self.data.qpos[:] = self.state.anim.frames[self.state.current_frame].positions
+            self.viewer.update()
 
     def on_frame_changed(self, value: int) -> None:
         """Handle frame selection change."""
@@ -178,10 +169,6 @@ class MjAnimator(QMainWindow):
         # Create a new frame with current positions
         frame = Frame(0.1, list(self.data.qpos))  # Default 0.1s duration
         self.state.anim.add_frame(frame.length, frame.positions)
-
-        # Update UI
-        self.frame_spinbox.setRange(0, len(self.state.anim.frames) - 1)
-        self.frame_spinbox.setValue(len(self.state.anim.frames) - 1)
 
     def save_animation(self) -> None:
         """Save the animation to file."""

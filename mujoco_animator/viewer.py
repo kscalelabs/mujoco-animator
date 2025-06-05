@@ -66,6 +66,10 @@ class QtMujocoViewer(QOpenGLWidget):
         """
         super().__init__(parent)
 
+        # Set focus policy to receive keyboard events
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setFocus()
+
         self._gui_lock = Lock()
         self._render_every_frame = True
         self._time_per_render = 1 / 60.0
@@ -147,6 +151,9 @@ class QtMujocoViewer(QOpenGLWidget):
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         """Handle mouse press events."""
+        # Ensure the viewer has focus when clicked
+        self.setFocus()
+
         self._button_left = bool(event.buttons() & Qt.MouseButton.LeftButton)
         self._button_right = bool(event.buttons() & Qt.MouseButton.RightButton)
         self._button_middle = bool(event.buttons() & Qt.MouseButton.MiddleButton)
