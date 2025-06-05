@@ -1,2 +1,5 @@
 # requirements.txt
 
+glfw
+mujoco
+numpy

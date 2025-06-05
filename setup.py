@@ -37,9 +37,9 @@ setup(
     install_requires=requirements,
     extras_require={"dev": requirements_dev},
     packages=find_packages(),
-    # entry_points={
-    #     "console_scripts": [
-    #         "cli=mujoco_animator.cli:main",
-    #     ],
-    # },
+    entry_points={
+        "console_scripts": [
+            "mujoco-animator=mujoco_animator.cli:main",
+        ],
+    },
 )
