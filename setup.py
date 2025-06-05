@@ -9,9 +9,17 @@ from setuptools import find_packages, setup
 with open("README.md", "r", encoding="utf-8") as f:
     long_description: str = f.read()
 
+requirements = [
+    "numpy",
+    "scipy",
+]
 
-with open("mujoco_animator/requirements.txt", "r", encoding="utf-8") as f:
-    requirements: list[str] = f.read().splitlines()
+requirements_cli = [
+    "glfw",
+    "mujoco",
+    "mujoco-scenes",
+    "PySide6==6.9.0",  # 6.9.1 shows some unusual rendering bugs.
+]
 
 requirements_dev = [
     "mypy",
@@ -35,7 +43,11 @@ setup(
     long_description_content_type="text/markdown",
     python_requires=">=3.11",
     install_requires=requirements,
-    extras_require={"dev": requirements_dev},
+    extras_require={
+        "cli": requirements_cli,
+        "dev": requirements_dev,
+        "all": requirements_cli + requirements_dev,
+    },
     packages=find_packages(),
     entry_points={
         "console_scripts": [

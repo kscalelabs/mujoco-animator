@@ -4,10 +4,6 @@ import argparse
 import sys
 from pathlib import Path
 
-from PySide6.QtWidgets import QApplication
-
-from mujoco_animator.animator import MjAnimator
-
 
 def main() -> int:
     """Main entry point.
@@ -15,6 +11,17 @@ def main() -> int:
     Returns:
         int: Exit code (0 for success, non-zero for error)
     """
+    try:
+        from PySide6.QtWidgets import QApplication
+
+        from mujoco_animator.animator import MjAnimator
+
+    except ImportError as e:
+        raise ImportError(
+            "To use the CLI, you should install the additional 'cli' dependencies using the following command: "
+            "pip install 'mujoco-animator[cli]'"
+        ) from e
+
     # Create Qt application first
     app = QApplication(sys.argv)
 
