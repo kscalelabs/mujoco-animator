@@ -80,7 +80,7 @@ class MjAnimator(QMainWindow):
         self.connect_signals()
 
         # Set minimum size to ensure OpenGL context has space
-        self.setMinimumSize(1200, 600)  # Increased width for side panel
+        self.setMinimumSize(800, 600)  # Increased width for side panel"
 
         # Adds the first frame.
         self.add_frame()
@@ -113,10 +113,17 @@ class MjAnimator(QMainWindow):
         self.frame_info = QLabel("Frame: 0 / 1")
         side_panel_layout.addWidget(self.frame_info)
 
-        # Selected DOF info
-        self.selected_dof_label = QLabel(f"Selected DOF: {self.state.selected_dof}")
-        self.selected_dof_label.setStyleSheet("color: cyan; font-weight: bold;")
-        side_panel_layout.addWidget(self.selected_dof_label)
+        # User control keys
+        self.user_control_keys = QLabel(
+            "User control keys:\n"
+            "G: Add frame\n"
+            "Space: Play/stop animation\n"
+            "Q/A: Adjust DOF\n"
+            "W/S: Select DOF\n"
+            "D/E: Select frame\n"
+            "R/F: Adjust time\n"
+        )
+        side_panel_layout.addWidget(self.user_control_keys)
 
         # Create scroll area for DOF controls
         scroll_area = QScrollArea()
@@ -203,11 +210,10 @@ class MjAnimator(QMainWindow):
                             suffixes = ["_x", "_y", "_z", "_qw", "_qx", "_qy", "_qz"]
                             if dof_offset < len(suffixes):
                                 return f"{joint_name}{suffixes[dof_offset]}"
-                        elif joint_type == mujoco.mjtJoint.mjJNT_BALL:
+                        if joint_type == mujoco.mjtJoint.mjJNT_BALL:
                             suffixes = ["_qw", "_qx", "_qy", "_qz"]
                             if dof_offset < len(suffixes):
                                 return f"{joint_name}{suffixes[dof_offset]}"
-
                         return f"{joint_name}_{dof_offset}"
 
             # Fallback to index if no joint found
@@ -228,9 +234,10 @@ class MjAnimator(QMainWindow):
         self.add_frame_btn.clicked.connect(self.add_frame)
         controls_layout.addWidget(self.add_frame_btn)
 
-        self.save_btn = QPushButton("Save (Ctrl+S)")
-        self.save_btn.clicked.connect(self.save_animation)
-        controls_layout.addWidget(self.save_btn)
+        self.playing_animation = False
+        self.playing_animation_btn = QPushButton("Play Animation (Space)")
+        self.playing_animation_btn.clicked.connect(self.toggle_playing_animation)
+        controls_layout.addWidget(self.playing_animation_btn)
 
         # Add controls to the viewer side (not the side panel)
         viewer_and_controls = QWidget()
@@ -243,6 +250,18 @@ class MjAnimator(QMainWindow):
         self._main_layout.removeWidget(self.viewer)
         self._main_layout.insertWidget(0, viewer_and_controls, stretch=3)
 
+    def toggle_playing_animation(self) -> None:
+        """Toggle the playing animation."""
+        self.playing_animation = not self.playing_animation
+        if self.playing_animation:
+            self.playing_animation_btn.setText("Stop Animation (Space)")
+            self.viewer.animation = self.state.anim.to_numpy(self.viewer.animation_dt, loop=True)
+        else:
+            self.playing_animation_btn.setText("Play Animation (Space)")
+            self.viewer.animation = None
+            self.viewer.animation_time = 0
+            self.on_frame_changed(self.state.current_frame)
+
     def connect_signals(self) -> None:
         """Connect keyboard shortcuts."""
         pass  # Already connected in __init__
@@ -253,34 +272,51 @@ class MjAnimator(QMainWindow):
             return
 
         match key:
-            case Qt.Key.Key_F:
+            case Qt.Key.Key_G:
                 self.add_frame()
             case Qt.Key.Key_Backspace:
                 self.delete_frame()
-            case Qt.Key.Key_S if mods & Qt.KeyboardModifier.ControlModifier:
-                self.save_animation()
-            case Qt.Key.Key_E:
+            case Qt.Key.Key_Q:
                 if mods & Qt.KeyboardModifier.ShiftModifier:
                     self.adjust_dof(0.01)
                 else:
                     self.adjust_dof(0.1)
-            case Qt.Key.Key_Q:
+            case Qt.Key.Key_A:
                 if mods & Qt.KeyboardModifier.ShiftModifier:
                     self.adjust_dof(-0.01)
                 else:
                     self.adjust_dof(-0.1)
-            case Qt.Key.Key_W:
-                self.on_frame_changed(self.state.current_frame - 1)
-            case Qt.Key.Key_S:
-                self.on_frame_changed(self.state.current_frame + 1)
-            case Qt.Key.Key_A:
-                self.on_dof_changed(self.state.selected_dof - 1)
             case Qt.Key.Key_D:
+                self.on_frame_changed(self.state.current_frame - 1)
+            case Qt.Key.Key_E:
+                self.on_frame_changed(self.state.current_frame + 1)
+            case Qt.Key.Key_W:
+                self.on_dof_changed(self.state.selected_dof - 1)
+            case Qt.Key.Key_S:
                 self.on_dof_changed(self.state.selected_dof + 1)
+            case Qt.Key.Key_R:
+                if mods & Qt.KeyboardModifier.ShiftModifier:
+                    self.on_time_change(0.1)
+                else:
+                    self.on_time_change(0.01)
+            case Qt.Key.Key_F:
+                if mods & Qt.KeyboardModifier.ShiftModifier:
+                    self.on_time_change(-0.1)
+                else:
+                    self.on_time_change(-0.01)
+            case Qt.Key.Key_Space:
+                self.toggle_playing_animation()
             case Qt.Key.Key_Escape:
                 self.close()
             case _:
                 pass
+
+    def on_time_change(self, value_delta: float) -> None:
+        """Handle time change."""
+        if self.state.anim.frames:
+            self.state.anim.frames[self.state.current_frame].length += value_delta
+            self.viewer.update()
+            self.update_side_panel()
 
     def on_dof_changed(self, value: int) -> None:
         """Handle DOF selection change."""
@@ -299,21 +335,25 @@ class MjAnimator(QMainWindow):
 
     def on_frame_changed(self, value: int) -> None:
         """Handle frame selection change."""
-        if 0 <= value < len(self.state.anim.frames):
-            self.state.current_frame = value
-            self.data.qpos[:] = self.state.anim.frames[value].positions
-            self.viewer.update()
-            self.update_side_panel()
+        if value >= len(self.state.anim.frames):
+            value = 0
+        elif value < 0:
+            value = len(self.state.anim.frames) - 1
+        self.state.current_frame = value
+        self.data.qpos[:] = self.state.anim.frames[value].positions
+        self.viewer.update()
+        self.update_side_panel()
 
     def update_side_panel(self) -> None:
         """Update the side panel with current values."""
         # Update frame info
         total_frames = len(self.state.anim.frames)
-        self.frame_info.setText(f"Frame: {self.state.current_frame + 1} / {total_frames}")
-
-        # Update selected DOF label with name
-        selected_dof_name = self.get_dof_name(self.state.selected_dof)
-        self.selected_dof_label.setText(f"Selected: {selected_dof_name}")
+        if total_frames == 0:
+            return
+        self.frame_info.setText(
+            f"Frame: {self.state.current_frame + 1} / {total_frames}\n"
+            f"Time: {self.state.anim.frames[self.state.current_frame].length:.2f}s"
+        )
 
         # Update DOF values
         if self.state.anim.frames:
@@ -358,7 +398,7 @@ class MjAnimator(QMainWindow):
     def add_frame(self) -> None:
         """Add a new frame to the animation."""
         # Create a new frame with current positions
-        frame = Frame(0.1, list(self.data.qpos))  # Default 0.1s duration
+        frame = Frame(1.0, list(self.data.qpos))  # Default 1.0s duration
         index = self.state.anim.add_frame(frame.length, frame.positions, index=self.state.current_frame + 1)
 
         # Update current frame to the newly added one

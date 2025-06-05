@@ -100,26 +100,27 @@ class MjAnim:
         if not self.frames:
             return np.zeros((0, self.num_dofs))
 
+        frames = self.frames.copy()
         if loop:
-            self.frames.append(Frame(0.0, self.frames[0].positions))
+            frames.append(Frame(dt, frames[0].positions))
 
         # Calculate total duration and number of steps
-        total_duration = sum(frame.length for frame in self.frames)
+        total_duration = sum(frame.length for frame in frames)
         num_steps = int(np.ceil(total_duration / dt))
 
         # Create output array
         positions = np.zeros((num_steps, self.num_dofs))
 
         # Calculate cumulative times for each frame
-        times = np.zeros(len(self.frames) + 1)
-        for i, frame in enumerate(self.frames):
+        times = np.zeros(len(frames) + 1)
+        for i, frame in enumerate(frames):
             times[i + 1] = times[i] + frame.length
 
         # Create time points for output, ensuring we don't exceed total_duration
         output_times = np.linspace(0, total_duration, num_steps, endpoint=True)
 
         for dof in range(self.num_dofs):
-            dof_positions = np.array([frame.positions[dof] for frame in self.frames])
+            dof_positions = np.array([frame.positions[dof] for frame in frames])
             if interp == "cubic":
                 spline = CubicSpline(times[:-1], dof_positions, bc_type="natural")
             elif interp == "linear":

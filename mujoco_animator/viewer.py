@@ -123,6 +123,11 @@ class QtMujocoViewer(QOpenGLWidget):
         self._timer.timeout.connect(self.update)
         self._timer.start(int(1000 / 60))  # 60 FPS
 
+        # Play animation
+        self.animation_time = 0
+        self.animation_dt = 1 / 30.0
+        self.animation: np.ndarray | None = None
+
     def set_camera(self, id: int | str) -> None:
         """Set the camera to use."""
         if isinstance(id, int):
@@ -260,6 +265,12 @@ class QtMujocoViewer(QOpenGLWidget):
     def paintGL(self) -> None:
         """Render the scene."""
         with self._gui_lock:
+            if self.animation is not None:
+                self.animation_time += 1
+                if self.animation_time >= self.animation.shape[0]:
+                    self.animation_time = 0
+                self.data.qpos[:] = self.animation[self.animation_time]
+
             # Update physics
             mujoco.mj_forward(self.model, self.data)
 
