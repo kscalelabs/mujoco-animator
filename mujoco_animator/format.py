@@ -46,10 +46,14 @@ class MjAnim:
         self.num_dofs: int = num_dofs
         self.frames: list[Frame] = [] if frames is None else frames
 
-    def add_frame(self, length: float, positions: list[float]) -> None:
+    def add_frame(self, length: float, positions: list[float], index: int | None = None) -> int:
         if len(positions) != self.num_dofs:
             raise ValueError(f"Expected {self.num_dofs} positions, got {len(positions)}")
-        self.frames.append(Frame(length, positions))
+        if index is None:
+            self.frames.append(Frame(length, positions))
+        else:
+            self.frames.insert(index, Frame(length, positions))
+        return len(self.frames) - 1 if index is None else index
 
     def save(self, path: Path) -> None:
         with open(path, "wb") as f:
