@@ -17,6 +17,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Self
 
+import numpy as np
+from scipy.interpolate import CubicSpline
+
 
 @dataclass
 class Frame:
@@ -75,3 +78,37 @@ class MjAnim:
         if not isinstance(other, MjAnim):
             return False
         return self.num_dofs == other.num_dofs and self.frames == other.frames
+
+    def to_numpy(self, dt: float) -> np.ndarray:
+        """Convert animation frames to a numpy array with evenly spaced time steps.
+
+        Args:
+            dt: Time step in seconds between each frame in the output array.
+
+        Returns:
+            A numpy array of shape (num_steps, num_dofs) containing the joint positions
+            at each time step. The positions are interpolated using cubic splines.
+        """
+        if not self.frames:
+            return np.zeros((0, self.num_dofs))
+
+        # Calculate total duration and number of steps
+        total_duration = sum(frame.length for frame in self.frames)
+        num_steps = int(np.ceil(total_duration / dt))
+
+        # Create output array
+        positions = np.zeros((num_steps, self.num_dofs))
+
+        # Calculate cumulative times for each frame
+        times = np.zeros(len(self.frames) + 1)
+        for i, frame in enumerate(self.frames):
+            times[i + 1] = times[i] + frame.length
+
+        output_times = np.arange(0, total_duration, dt)
+
+        for dof in range(self.num_dofs):
+            dof_positions = np.array([frame.positions[dof] for frame in self.frames])
+            spline = CubicSpline(times[:-1], dof_positions, bc_type="natural")
+            positions[:, dof] = spline(output_times)
+
+        return positions

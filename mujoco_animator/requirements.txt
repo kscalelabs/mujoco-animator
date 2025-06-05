@@ -3,3 +3,4 @@
 glfw
 mujoco
 numpy
+scipy
