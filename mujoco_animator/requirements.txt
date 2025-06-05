@@ -2,6 +2,7 @@
 
 glfw
 mujoco
+mujoco-scenes
 numpy
 scipy
 

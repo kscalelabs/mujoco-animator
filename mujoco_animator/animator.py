@@ -5,10 +5,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import mujoco
+from mujoco_scenes.mjcf import load_mjmodel
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QShowEvent
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -47,7 +49,7 @@ class MjAnimator(QMainWindow):
         self.setWindowTitle("Mujoco Animator")
 
         # Load model
-        self.model = mujoco.MjModel.from_xml_path(str(model_path))
+        self.model = load_mjmodel(str(model_path), scene="smooth")
         self.data = mujoco.MjData(self.model)
 
         # Store output path
@@ -60,7 +62,6 @@ class MjAnimator(QMainWindow):
 
         # Set up viewer with proper parent
         self.viewer = QtMujocoViewer(self.model, self.data, central_widget)
-        self.viewer.set_camera(-1)  # Free camera
         self.viewer.set_key_callback(self.handle_key)
 
         # Add viewer to layout (takes up most space)
@@ -76,7 +77,7 @@ class MjAnimator(QMainWindow):
         self.connect_signals()
 
         # Set minimum size to ensure OpenGL context has space
-        self.setMinimumSize(800, 600)  # Increased width for side panel
+        self.setMinimumSize(1200, 600)  # Increased width for side panel
 
         # Initialize animation - load existing or create new
         if self.output_path and self.output_path.exists():
@@ -117,21 +118,80 @@ class MjAnimator(QMainWindow):
         side_panel.setMinimumWidth(250)
         side_panel_layout = QVBoxLayout(side_panel)
 
-        # Frame info
-        self.frame_info = QLabel("Frame: 0 / 1")
-        side_panel_layout.addWidget(self.frame_info)
+        # Frame information group
+        frame_group = QGroupBox("Frame Information")
+        frame_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid gray;
+                border-radius: 5px;
+                margin: 5px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+        """)
+        frame_layout = QVBoxLayout()
 
-        # User control keys
+        self.frame_info = QLabel("Frame: 0 / 1\nTime: 0.00s")
+        self.frame_info.setStyleSheet("margin: 5px;")
+        frame_layout.addWidget(self.frame_info)
+
+        frame_group.setLayout(frame_layout)
+        side_panel_layout.addWidget(frame_group)
+
+        # Controls information group
+        controls_group = QGroupBox("Keyboard Controls")
+        controls_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid gray;
+                border-radius: 5px;
+                margin: 5px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+        """)
+        controls_layout = QVBoxLayout()
+
         self.user_control_keys = QLabel(
-            "User control keys:\n"
-            "G: Add frame\n"
-            "Space: Play/stop animation\n"
-            "Q/A: Adjust DOF\n"
-            "W/S: Select DOF\n"
-            "D/E: Select frame\n"
-            "R/F: Adjust time\n"
+            "<b>G:</b> Add frame<br/>"
+            "<b>Space:</b> Play/stop animation<br/>"
+            "<b>Q/A:</b> Adjust DOF<br/>"
+            "<b>W/S:</b> Select DOF<br/>"
+            "<b>D/E:</b> Select frame<br/>"
+            "<b>R/F:</b> Adjust time"
         )
-        side_panel_layout.addWidget(self.user_control_keys)
+        self.user_control_keys.setStyleSheet("margin: 5px; font-size: 11px;")
+        controls_layout.addWidget(self.user_control_keys)
+
+        controls_group.setLayout(controls_layout)
+        side_panel_layout.addWidget(controls_group)
+
+        # DOF values group
+        dof_group = QGroupBox("DOF Values")
+        dof_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid gray;
+                border-radius: 5px;
+                margin: 5px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+        """)
+        dof_layout = QVBoxLayout()
 
         # Create scroll area for DOF controls
         scroll_area = QScrollArea()
@@ -144,8 +204,8 @@ class MjAnimator(QMainWindow):
         for i in range(self.model.nq):
             # Create container widget for this DOF
             dof_container = QWidget()
-            dof_layout = QHBoxLayout(dof_container)
-            dof_layout.setContentsMargins(2, 2, 2, 2)  # Small margins
+            dof_container_layout = QHBoxLayout(dof_container)
+            dof_container_layout.setContentsMargins(2, 2, 2, 2)  # Small margins
 
             # Get DOF/joint name
             dof_name = self.get_dof_name(i)
@@ -153,7 +213,7 @@ class MjAnimator(QMainWindow):
             # DOF label
             dof_label = QLabel(f"{dof_name}:")
             dof_label.setMinimumWidth(80)  # Increased width for longer names
-            dof_layout.addWidget(dof_label)
+            dof_container_layout.addWidget(dof_label)
 
             # DOF value spinbox
             spinbox = QDoubleSpinBox()
@@ -163,7 +223,7 @@ class MjAnimator(QMainWindow):
             spinbox.setValue(0.0)
             spinbox.valueChanged.connect(lambda value, dof=i: self.on_dof_value_changed(dof, value))
             self.dof_spinboxes.append(spinbox)
-            dof_layout.addWidget(spinbox)
+            dof_container_layout.addWidget(spinbox)
 
             # Store reference to container widget and add to scroll layout
             self.dof_widgets.append(dof_container)
@@ -172,7 +232,10 @@ class MjAnimator(QMainWindow):
         scroll_widget.setLayout(scroll_layout)
         scroll_area.setWidget(scroll_widget)
         scroll_area.setWidgetResizable(True)
-        side_panel_layout.addWidget(scroll_area)
+        dof_layout.addWidget(scroll_area)
+
+        dof_group.setLayout(dof_layout)
+        side_panel_layout.addWidget(dof_group)
 
         # Store reference to scroll area for auto-scrolling
         self.scroll_area = scroll_area

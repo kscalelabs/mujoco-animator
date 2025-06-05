@@ -93,9 +93,9 @@ class QtMujocoViewer(QOpenGLWidget):
         # Set up default camera
         self.cam.type = mujoco.mjtCamera.mjCAMERA_FREE
         self.cam.fixedcamid = -1
-        self.cam.distance = 5.0
-        self.cam.lookat = [0.0, 0.0, 0.0]
-        self.cam.elevation = -20.0
+        self.cam.distance = 3.5
+        self.cam.lookat = [0.0, 0.0, 0.5]
+        self.cam.elevation = 10.0
         self.cam.azimuth = 90.0
 
         # Defer OpenGL context initialization to initializeGL()
@@ -127,28 +127,6 @@ class QtMujocoViewer(QOpenGLWidget):
         self.animation_time = 0
         self.animation_dt = 1 / 30.0
         self.animation: np.ndarray | None = None
-
-    def set_camera(self, id: int | str) -> None:
-        """Set the camera to use."""
-        if isinstance(id, int):
-            if id < -1 or id >= self.model.ncam:
-                raise ValueError(f"Camera ID {id} is out of range [-1, {self.model.ncam}).")
-            # Set up camera
-            self.cam.fixedcamid = id
-            if id == -1:
-                self.cam.type = mujoco.mjtCamera.mjCAMERA_FREE
-                mujoco.mjv_defaultFreeCamera(self.model, self.cam)
-            else:
-                self.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
-        elif isinstance(id, str):
-            camera_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, id)
-            if camera_id == -1:
-                raise ValueError(f'The camera "{id}" does not exist.')
-            # Set up camera
-            self.cam.fixedcamid = camera_id
-            self.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
-        else:
-            raise ValueError(f"Invalid camera ID: {id}")
 
     def set_key_callback(self, callback: Callable[[int, int, int, Qt.KeyboardModifier], None]) -> None:
         """Set the key callback function."""
@@ -210,6 +188,7 @@ class QtMujocoViewer(QOpenGLWidget):
         if self._button_left:
             self.cam.azimuth -= dx * 0.5
             self.cam.elevation -= dy * 0.5
+
         # Right button: pan camera
         elif self._button_right:
             forward = np.array(
@@ -231,7 +210,7 @@ class QtMujocoViewer(QOpenGLWidget):
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         """Handle mouse wheel events."""
-        self.cam.distance *= 0.9 if event.angleDelta().y() > 0 else 1.1
+        self.cam.distance *= 0.99 if event.angleDelta().y() > 0 else 1.01
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         """Handle key press events."""
