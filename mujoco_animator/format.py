@@ -15,6 +15,7 @@ __all__ = [
     "MjAnim",
 ]
 
+import json
 import math
 import struct
 from dataclasses import dataclass
@@ -24,7 +25,6 @@ from typing import Literal, Self
 import numpy as np
 from scipy.interpolate import CubicSpline, interp1d
 
-import json
 
 @dataclass
 class Frame:
@@ -86,7 +86,7 @@ class MjAnim:
         json_data["frames"] = json_frames
         with open(json_path, "w") as f:
             json.dump(json_data, f, indent=2)
-                    
+
     @classmethod
     def load_binary(cls, path: Path) -> Self:
         with open(path, "rb") as f:

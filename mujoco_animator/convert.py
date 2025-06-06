@@ -1,5 +1,11 @@
-from pathlib import Path
+"""Convert animation file from one supported format to another.
+
+Accepts json or mjanim, dependent on file extension of input_path and output_path.
+"""
+
 import argparse
+from pathlib import Path
+
 from mujoco_animator.format import MjAnim
 
 
