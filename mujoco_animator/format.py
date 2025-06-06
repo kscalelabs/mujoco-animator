@@ -24,6 +24,7 @@ from typing import Literal, Self
 import numpy as np
 from scipy.interpolate import CubicSpline, interp1d
 
+import json
 
 @dataclass
 class Frame:
@@ -59,7 +60,8 @@ class MjAnim:
             self.frames.insert(index, Frame(length, positions))
         return len(self.frames) - 1 if index is None else index
 
-    def save(self, path: Path) -> None:
+    # Binary packed save
+    def save_binary(self, path: Path) -> None:
         with open(path, "wb") as f:
             f.write(b"MJAN")
             f.write(struct.pack("<I", self.num_dofs))
@@ -68,8 +70,25 @@ class MjAnim:
                 f.write(struct.pack("<f", frame.length))
                 f.write(struct.pack(f"<{len(frame.positions)}f", *frame.positions))
 
+    # JSON save data
+    def save_json(self, path: Path) -> None:
+        json_path = path.with_suffix(".json")
+
+        json_data = {"num_dofs": self.num_dofs, "num_frames": len(self.frames)}
+
+        json_frames = []
+        for i, frame in enumerate(self.frames):
+            json_frames.append({
+                "index": i,
+                "length": frame.length,
+                "positions": frame.positions,
+            })
+        json_data["frames"] = json_frames
+        with open(json_path, "w") as f:
+            json.dump(json_data, f, indent=2)
+                    
     @classmethod
-    def load(cls, path: Path) -> Self:
+    def load_binary(cls, path: Path) -> Self:
         with open(path, "rb") as f:
             if f.read(4) != b"MJAN":
                 raise ValueError("Invalid file format")
@@ -80,6 +99,20 @@ class MjAnim:
                 length = struct.unpack("<f", f.read(4))[0]
                 positions = struct.unpack(f"<{num_dofs}f", f.read(4 * num_dofs))
                 frames.append(Frame(length, list(positions)))
+        return cls(num_dofs, frames)
+
+    @classmethod
+    def load_json(cls, path: Path) -> None:
+        json_path = path.with_suffix(".json")
+        with open(json_path, "r") as f:
+            json_data = json.load(f)
+            num_dofs = json_data["num_dofs"]
+            num_frames = json_data["num_frames"]
+            frames = []
+            for i in range(num_frames):
+                length = json_data["frames"][i]["length"]
+                positions = json_data["frames"][i]["positions"]
+                frames.append(Frame(length, positions))
         return cls(num_dofs, frames)
 
     def __eq__(self, other: object) -> bool:
