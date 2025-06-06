@@ -36,3 +36,7 @@ Then you can run
 ```bash
 mujoco-animator /path/to/your/robot.mjcf
 ```
+
+You may provide a desired output file name with `--output`. The output is dynamic depending on the filetype. Currently supported:
+* `.mjanim` -> Condensed Binary
+* `.json` -> JSON Dictionary
