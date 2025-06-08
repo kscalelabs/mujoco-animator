@@ -105,23 +105,29 @@ class MjAnim:
             return np.zeros((0, self.num_dofs))
 
         frames = self.frames.copy()
+        if len(frames) == 0:
+            return np.zeros((0, self.num_dofs))
+        if len(frames) == 1:
+            return np.array([frames[0].positions])
+
         if loop:
-            frames.append(Frame(dt, frames[0].positions))
+            frames.append(Frame(0.0, frames[0].positions))
+        else:
+            frames[-1].length = 0.0
+
+        # Calculate cumulative times for each frame.
+        times = np.cumsum([frame.length for frame in frames])
+        times = np.concatenate([[0], times])
 
         # Calculate total duration and number of steps
-        total_duration = sum(frame.length for frame in frames)
+        total_duration = times[-1]
         num_steps = int(np.ceil(total_duration / dt))
+
+        # Create time points for output, ensuring we don't exceed total_duration.
+        output_times = np.linspace(0, total_duration, num_steps, endpoint=True)
 
         # Create output array
         positions = np.zeros((num_steps, self.num_dofs))
-
-        # Calculate cumulative times for each frame
-        times = np.zeros(len(frames) + 1)
-        for i, frame in enumerate(frames):
-            times[i + 1] = times[i] + frame.length
-
-        # Create time points for output, ensuring we don't exceed total_duration
-        output_times = np.linspace(0, total_duration, num_steps, endpoint=True)
 
         for dof in range(self.num_dofs):
             dof_positions = np.array([frame.positions[dof] for frame in frames])

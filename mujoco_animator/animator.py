@@ -59,6 +59,9 @@ class MjAnimator(QMainWindow):
         # Initialize cubic interpolation setting
         self.use_cubic_interp = False
 
+        # Initialize loop animation setting
+        self.loop_animation = False
+
         # Create central widget and layout first
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -203,6 +206,13 @@ class MjAnimator(QMainWindow):
         self.cubic_interp_checkbox.stateChanged.connect(self.on_cubic_interp_changed)
         self.cubic_interp_checkbox.setStyleSheet("margin: 5px; color: palette(windowText);")
         animation_layout.addWidget(self.cubic_interp_checkbox)
+
+        # Loop animation checkbox.
+        self.loop_animation_checkbox = QCheckBox("Loop Animation")
+        self.loop_animation_checkbox.setChecked(self.loop_animation)
+        self.loop_animation_checkbox.stateChanged.connect(self.on_loop_animation_changed)
+        self.loop_animation_checkbox.setStyleSheet("margin: 5px; color: palette(windowText);")
+        animation_layout.addWidget(self.loop_animation_checkbox)
 
         animation_group.setLayout(animation_layout)
         side_panel_layout.addWidget(animation_group)
@@ -363,7 +373,7 @@ class MjAnimator(QMainWindow):
             self.playing_animation_btn.setText("Stop Animation (Space)")
             self.viewer.animation = self.state.anim.to_numpy(
                 self.viewer.animation_dt,
-                loop=True,
+                loop=self.loop_animation,
                 interp="cubic" if self.use_cubic_interp else "linear",
             )
         else:
@@ -452,9 +462,21 @@ class MjAnimator(QMainWindow):
         if self.playing_animation:
             self.viewer.animation = self.state.anim.to_numpy(
                 self.viewer.animation_dt,
-                loop=True,
+                loop=self.loop_animation,
                 interp="cubic" if self.use_cubic_interp else "linear",
             )
+
+    def on_loop_animation_changed(self, state: int) -> None:
+        """Handle loop animation checkbox change."""
+        self.loop_animation = state == 2  # Qt.CheckState.Checked is 2
+        if self.playing_animation:
+            self.viewer.loop_animation = self.loop_animation
+            self.viewer.animation = self.state.anim.to_numpy(
+                self.viewer.animation_dt,
+                loop=self.loop_animation,
+                interp="cubic" if self.use_cubic_interp else "linear",
+            )
+            self.viewer.animation_time = 0
 
     def on_frame_changed(self, value: int) -> None:
         """Handle frame selection change."""
