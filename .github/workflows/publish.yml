@@ -14,44 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-wheels:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    name: Build and publish Python package (${{ matrix.os }})
-    timeout-minutes: 10
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install cibuildwheel
-        shell: bash
-
-      - name: Build package
-        env:
-          CIBW_SKIP: "pp* *-musllinux*"  # Skip PyPy and musllinux builds
-        run: |
-          cibuildwheel --output-dir dist
-
-      - name: Upload wheel artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-${{ matrix.os }}
-          path: |
-            dist/*.whl
-
-  build-source-dist:
-    name: Build and publish Python package (source distribution)
+  build:
+    name: Build Python package
     timeout-minutes: 10
     runs-on: ubuntu-latest
 
@@ -68,38 +32,31 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build
-        shell: bash
 
-      - name: Build source distribution
+      - name: Build package
         run: |
-          python -m build --sdist --outdir dist
+          python -m build --wheel --sdist --outdir dist
 
-      - name: Upload source distribution
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: source-dist
-          path: |
-            dist/*.tar.gz
+          name: python-package-distributions
+          path: dist/
 
-  publish-wheels:
-    needs: [build-wheels, build-source-dist]
-    name: Publish Python wheels
+  publish:
+    needs: [build]
+    name: Publish Python package
     timeout-minutes: 10
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download all wheels
+      - name: Download package distributions
         uses: actions/download-artifact@v4
         with:
-          path: dist
-
-      - name: Move wheels to dist directory
-        run: |
-          mkdir -p final_dist
-          find dist -name "*.whl" -exec mv {} final_dist/ \;
-          find dist -name "*.tar.gz" -exec mv {} final_dist/ \;
+          name: python-package-distributions
+          path: dist/
 
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: final_dist/
+          packages-dir: dist/

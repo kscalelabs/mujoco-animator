@@ -125,6 +125,7 @@ class QtMujocoViewer(QOpenGLWidget):
 
         # Play animation
         self.animation_time = 0
+        self.loop_animation = False
         self.animation_dt = 1 / 30.0
         self.animation: np.ndarray | None = None
 
@@ -245,9 +246,12 @@ class QtMujocoViewer(QOpenGLWidget):
         """Render the scene."""
         with self._gui_lock:
             if self.animation is not None:
-                self.animation_time += 1
-                if self.animation_time >= self.animation.shape[0]:
-                    self.animation_time = 0
+                if self.loop_animation:
+                    self.animation_time += 1
+                    if self.animation_time >= self.animation.shape[0]:
+                        self.animation_time = 0
+                else:
+                    self.animation_time = min(self.animation_time + 1, self.animation.shape[0] - 1)
                 self.data.qpos[:] = self.animation[self.animation_time]
 
             # Update physics

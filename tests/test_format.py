@@ -13,9 +13,10 @@ def test_save_and_load(tmpdir: Path) -> None:
     dt = 0.1
     anim = MjAnim(num_dofs)
     total_tsz = 0.0
-    for _ in range(num_steps):
+    for i in range(num_steps):
         tsz = random.random()
-        total_tsz += tsz
+        if i != num_steps - 1:
+            total_tsz += tsz
         anim.add_frame(tsz, [random.random() for _ in range(num_dofs)])
     anim.save(tmpdir / "test.mjanim")
     anim2 = MjAnim.load(tmpdir / "test.mjanim")
