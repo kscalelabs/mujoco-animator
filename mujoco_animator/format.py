@@ -87,7 +87,7 @@ class MjAnim:
             return False
         return self.num_dofs == other.num_dofs and self.frames == other.frames
 
-    def to_numpy(self, dt: float, interp: Literal["linear", "cubic"] = "cubic", loop: bool = True) -> np.ndarray:
+    def to_numpy(self, dt: float, interp: Literal["linear", "cubic"] = "cubic", loop: bool = False) -> np.ndarray:
         """Convert animation frames to a numpy array with evenly spaced time steps.
 
         Args:
