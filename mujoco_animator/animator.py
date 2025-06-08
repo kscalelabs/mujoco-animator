@@ -92,7 +92,7 @@ class MjAnimator(QMainWindow):
                 print("Loading JSON")
                 self.state = AnimationState(MjAnim.load_json(self.output_path))
             else:
-                self.state = AnimationState(MjAnim.load(self.output_path))
+                self.state = AnimationState(MjAnim.load_binary(self.output_path))
 
             if not self.state.anim.frames:
                 raise ValueError("Animation file is empty")
