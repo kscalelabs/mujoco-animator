@@ -9,6 +9,7 @@ from mujoco_scenes.mjcf import load_mjmodel
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QShowEvent
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDoubleSpinBox,
     QGroupBox,
     QHBoxLayout,
@@ -54,6 +55,9 @@ class MjAnimator(QMainWindow):
 
         # Store output path
         self.output_path = output_path
+
+        # Initialize cubic interpolation setting
+        self.use_cubic_interp = False
 
         # Create central widget and layout first
         central_widget = QWidget()
@@ -175,6 +179,34 @@ class MjAnimator(QMainWindow):
         controls_group.setLayout(controls_layout)
         side_panel_layout.addWidget(controls_group)
 
+        # Animation settings group
+        animation_group = QGroupBox("Animation Settings")
+        animation_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid gray;
+                border-radius: 5px;
+                margin: 5px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+        """)
+        animation_layout = QVBoxLayout()
+
+        # Cubic interpolation checkbox
+        self.cubic_interp_checkbox = QCheckBox("Use Cubic Interpolation")
+        self.cubic_interp_checkbox.setChecked(self.use_cubic_interp)
+        self.cubic_interp_checkbox.stateChanged.connect(self.on_cubic_interp_changed)
+        self.cubic_interp_checkbox.setStyleSheet("margin: 5px; color: palette(windowText);")
+        animation_layout.addWidget(self.cubic_interp_checkbox)
+
+        animation_group.setLayout(animation_layout)
+        side_panel_layout.addWidget(animation_group)
+
         # DOF values group
         dof_group = QGroupBox("DOF Values")
         dof_group.setStyleSheet("""
@@ -213,6 +245,12 @@ class MjAnimator(QMainWindow):
             # DOF label
             dof_label = QLabel(f"{dof_name}:")
             dof_label.setMinimumWidth(80)  # Increased width for longer names
+            dof_label.setStyleSheet("""
+                QLabel {
+                    color: palette(windowText);
+                    background-color: transparent;
+                }
+            """)
             dof_container_layout.addWidget(dof_label)
 
             # DOF value spinbox
@@ -323,7 +361,11 @@ class MjAnimator(QMainWindow):
         self.playing_animation = not self.playing_animation
         if self.playing_animation:
             self.playing_animation_btn.setText("Stop Animation (Space)")
-            self.viewer.animation = self.state.anim.to_numpy(self.viewer.animation_dt, loop=True)
+            self.viewer.animation = self.state.anim.to_numpy(
+                self.viewer.animation_dt,
+                loop=True,
+                interp="cubic" if self.use_cubic_interp else "linear",
+            )
         else:
             self.playing_animation_btn.setText("Play Animation (Space)")
             self.viewer.animation = None
@@ -402,6 +444,17 @@ class MjAnimator(QMainWindow):
             self.data.qpos[dof] = value
             self.viewer.update()
             self.auto_save()
+
+    def on_cubic_interp_changed(self, state: int) -> None:
+        """Handle cubic interpolation checkbox change."""
+        self.use_cubic_interp = state == 2  # Qt.CheckState.Checked is 2
+        # If animation is currently playing, restart it with new interpolation
+        if self.playing_animation:
+            self.viewer.animation = self.state.anim.to_numpy(
+                self.viewer.animation_dt,
+                loop=True,
+                interp="cubic" if self.use_cubic_interp else "linear",
+            )
 
     def on_frame_changed(self, value: int) -> None:
         """Handle frame selection change."""
