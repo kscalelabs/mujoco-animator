@@ -17,6 +17,7 @@ __all__ = [
 
 import math
 import struct
+import copy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Self
@@ -104,7 +105,7 @@ class MjAnim:
         if not self.frames:
             return np.zeros((0, self.num_dofs))
 
-        frames = self.frames.copy()
+        frames = copy.deepcopy(self.frames)
         if len(frames) == 0:
             return np.zeros((0, self.num_dofs))
         if len(frames) == 1:
