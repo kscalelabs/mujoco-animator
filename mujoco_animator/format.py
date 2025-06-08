@@ -15,8 +15,8 @@ __all__ = [
     "MjAnim",
 ]
 
-import json
 import copy
+import json
 import math
 import struct
 from dataclasses import dataclass
@@ -79,11 +79,13 @@ class MjAnim:
 
         json_frames = []
         for i, frame in enumerate(self.frames):
-            json_frames.append({
-                "index": i,
-                "length": frame.length,
-                "positions": frame.positions,
-            })
+            json_frames.append(
+                {
+                    "index": i,
+                    "length": frame.length,
+                    "positions": frame.positions,
+                }
+            )
         json_data["frames"] = json_frames
         with open(json_path, "w") as f:
             json.dump(json_data, f, indent=2)

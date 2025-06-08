@@ -21,8 +21,10 @@ def convert_anim_file(input_path: Path, output_path: Path) -> None:
 
     print(f"Converted {input_path} to {output_path}")
 
+
 def main(input_path: Path, output_path: Path) -> None:
     convert_anim_file(input_path, output_path)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -584,4 +584,3 @@ class MjAnimator(QMainWindow):
                 self.state.anim.save_json(self.output_path)
             else:
                 self.state.anim.save_binary(self.output_path)
-
