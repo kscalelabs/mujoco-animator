@@ -15,9 +15,9 @@ __all__ = [
     "MjAnim",
 ]
 
+import copy
 import math
 import struct
-import copy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Self
