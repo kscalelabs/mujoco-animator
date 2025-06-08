@@ -575,7 +575,7 @@ class MjAnimator(QMainWindow):
         if self.output_path.suffix == ".json":
             self.state.anim.save_json(self.output_path)
         else:
-            self.state.anim.save(self.output_path)
+            self.state.anim.save_binary(self.output_path)
 
     def auto_save(self) -> None:
         """Automatically save the animation if an output path is set."""
@@ -583,5 +583,5 @@ class MjAnimator(QMainWindow):
             if self.output_path.suffix == ".json":
                 self.state.anim.save_json(self.output_path)
             else:
-                self.state.anim.save(self.output_path)
+                self.state.anim.save_binary(self.output_path)
 

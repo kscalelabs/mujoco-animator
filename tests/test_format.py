@@ -18,8 +18,8 @@ def test_save_and_load(tmpdir: Path) -> None:
         if i != num_steps - 1:
             total_tsz += tsz
         anim.add_frame(tsz, [random.random() for _ in range(num_dofs)])
-    anim.save(tmpdir / "test.mjanim")
-    anim2 = MjAnim.load(tmpdir / "test.mjanim")
+    anim.save_binary(tmpdir / "test.mjanim")
+    anim2 = MjAnim.load_binary(tmpdir / "test.mjanim")
     assert anim == anim2
 
     nd_array = anim.to_numpy(dt, interp="cubic", loop=False)
