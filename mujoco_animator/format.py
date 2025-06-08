@@ -75,9 +75,12 @@ class MjAnim:
     def save_json(self, path: Path) -> None:
         json_path = path.with_suffix(".json")
 
-        json_data = {"num_dofs": self.num_dofs, "num_frames": len(self.frames)}
+        json_data: dict[str, int | list[dict[str, int | float | list[float]]]] = {
+            "num_dofs": self.num_dofs,
+            "num_frames": len(self.frames),
+        }
 
-        json_frames = []
+        json_frames: list[dict[str, int | float | list[float]]] = []
         for i, frame in enumerate(self.frames):
             json_frames.append(
                 {
@@ -105,7 +108,7 @@ class MjAnim:
         return cls(num_dofs, frames)
 
     @classmethod
-    def load_json(cls, path: Path) -> None:
+    def load_json(cls, path: Path) -> Self:
         json_path = path.with_suffix(".json")
         with open(json_path, "r") as f:
             json_data = json.load(f)
