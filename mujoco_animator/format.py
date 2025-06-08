@@ -69,7 +69,7 @@ class MjAnim:
                 f.write(struct.pack(f"<{len(frame.positions)}f", *frame.positions))
 
     @classmethod
-    def load(cls, path: Path) -> Self:
+    def load(cls, path: str | Path) -> Self:
         with open(path, "rb") as f:
             if f.read(4) != b"MJAN":
                 raise ValueError("Invalid file format")
