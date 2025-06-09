@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from mujoco_animator.format import Frame, MjAnim
+from mujoco_animator.helpers import annotate_clearance
 from mujoco_animator.viewer import QtMujocoViewer
 
 
@@ -49,9 +50,33 @@ class MjAnimator(QMainWindow):
         # Set window title first
         self.setWindowTitle("Mujoco Animator")
 
+        # Store model path for later use
+        self.model_path = model_path
+
         # Load model
         self.model = load_mjmodel(str(model_path), scene="smooth")
         self.data = mujoco.MjData(self.model)
+
+        # Save geom and site info for foot clearance calculation
+        self._floor_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
+        self._lgeom_id = mujoco.mj_name2id(
+            self.model, mujoco.mjtObj.mjOBJ_GEOM, "KB_D_501L_L_LEG_FOOT_collision_capsule_0"
+        )
+        self._rgeom_id = mujoco.mj_name2id(
+            self.model, mujoco.mjtObj.mjOBJ_GEOM, "KB_D_501R_R_LEG_FOOT_collision_capsule_0"
+        )
+
+        if -1 in (self._floor_id, self._lgeom_id, self._rgeom_id):
+            raise RuntimeError("could not find floor or foot geoms by name")
+
+        self._left_foot_site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, "left_foot")
+        self._right_foot_site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, "right_foot")
+
+        if self._left_foot_site_id == -1 or self._right_foot_site_id == -1:
+            raise RuntimeError("foot sites not found in MJCF")
+
+        self._left_foot_site_half_height = self.model.site_size[self._left_foot_site_id][2]
+        self._right_foot_site_half_height = self.model.site_size[self._right_foot_site_id][2]
 
         # Store output path
         self.output_path = output_path
@@ -150,6 +175,10 @@ class MjAnimator(QMainWindow):
         self.frame_info = QLabel("Frame: 0 / 1\nTime: 0.00s")
         self.frame_info.setStyleSheet("margin: 5px;")
         frame_layout.addWidget(self.frame_info)
+
+        self.clearance_info = QLabel("Clearance: 0.0 m")
+        self.clearance_info.setStyleSheet("margin: 5px;")
+        frame_layout.addWidget(self.clearance_info)
 
         frame_group.setLayout(frame_layout)
         side_panel_layout.addWidget(frame_group)
@@ -457,6 +486,7 @@ class MjAnimator(QMainWindow):
             self.state.anim.frames[self.state.current_frame].positions[dof] = value
             self.data.qpos[dof] = value
             self.viewer.update()
+            self.update_side_panel()
             self.auto_save()
 
     def on_cubic_interp_changed(self, state: int) -> None:
@@ -495,6 +525,9 @@ class MjAnimator(QMainWindow):
 
     def update_side_panel(self) -> None:
         """Update the side panel with current values."""
+        # -- make sure kinematics are current --
+        mujoco.mj_forward(self.model, self.data)
+
         # Update frame info
         total_frames = len(self.state.anim.frames)
         if total_frames == 0:
@@ -503,6 +536,12 @@ class MjAnimator(QMainWindow):
             f"Frame: {self.state.current_frame + 1} / {total_frames}\n"
             f"Time: {self.state.anim.frames[self.state.current_frame].length:.2f}s"
         )
+
+        # --- update clearance read-out ---
+        left_foot_dist = mujoco.mj_geomDistance(self.model, self.data, self._lgeom_id, self._floor_id, 1.0, None)
+        right_foot_dist = mujoco.mj_geomDistance(self.model, self.data, self._rgeom_id, self._floor_id, 1.0, None)
+        clr = min(left_foot_dist, right_foot_dist)
+        self.clearance_info.setText(f"Clearance: {clr:.3f} m")
 
         # Update DOF values
         if self.state.anim.frames:
@@ -571,15 +610,13 @@ class MjAnimator(QMainWindow):
         """Save the animation to file."""
         if self.output_path is None:
             return
+        annotate_clearance(self.model_path, self.state.anim)
         if self.output_path.suffix == ".json":
             self.state.anim.save_json(self.output_path)
         else:
             self.state.anim.save_binary(self.output_path)
 
     def auto_save(self) -> None:
-        """Automatically save the animation if an output path is set."""
+        """Automatically save the animation if an output path is set and frames exist."""
         if self.output_path is not None and self.state.anim.frames:
-            if self.output_path.suffix == ".json":
-                self.state.anim.save_json(self.output_path)
-            else:
-                self.state.anim.save_binary(self.output_path)
+            self.save_animation()
