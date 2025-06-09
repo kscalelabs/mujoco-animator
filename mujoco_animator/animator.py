@@ -88,7 +88,11 @@ class MjAnimator(QMainWindow):
 
         # Initialize animation - load existing or create new
         if self.output_path and self.output_path.exists():
-            self.state = AnimationState(MjAnim.load(self.output_path))
+            if self.output_path.suffix == ".json":
+                self.state = AnimationState(MjAnim.load_json(self.output_path))
+            else:
+                self.state = AnimationState(MjAnim.load_binary(self.output_path))
+
             if not self.state.anim.frames:
                 raise ValueError("Animation file is empty")
             if self.state.anim.num_dofs != self.model.nq:
@@ -567,9 +571,15 @@ class MjAnimator(QMainWindow):
         """Save the animation to file."""
         if self.output_path is None:
             return
-        self.state.anim.save(self.output_path)
+        if self.output_path.suffix == ".json":
+            self.state.anim.save_json(self.output_path)
+        else:
+            self.state.anim.save_binary(self.output_path)
 
     def auto_save(self) -> None:
         """Automatically save the animation if an output path is set."""
         if self.output_path is not None and self.state.anim.frames:
-            self.state.anim.save(self.output_path)
+            if self.output_path.suffix == ".json":
+                self.state.anim.save_json(self.output_path)
+            else:
+                self.state.anim.save_binary(self.output_path)
