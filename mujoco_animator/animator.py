@@ -89,7 +89,6 @@ class MjAnimator(QMainWindow):
         # Initialize animation - load existing or create new
         if self.output_path and self.output_path.exists():
             if self.output_path.suffix == ".json":
-                print("Loading JSON")
                 self.state = AnimationState(MjAnim.load_json(self.output_path))
             else:
                 self.state = AnimationState(MjAnim.load_binary(self.output_path))
