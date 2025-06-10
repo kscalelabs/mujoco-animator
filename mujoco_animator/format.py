@@ -121,6 +121,18 @@ class MjAnim:
                 frames.append(Frame(length, positions))
         return cls(num_dofs, frames)
 
+    @classmethod
+    def load(cls, path: Path) -> Self:
+        path = Path(path)
+        suffix = path.suffix.lower()
+
+        if suffix == ".mjanim":
+            return cls.load_binary(path)
+        elif suffix == ".json":
+            return cls.load_json(path)
+        else:
+            raise ValueError(f"Unsupported file extension: {suffix}. Supported formats: .mjanim, .json")
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, MjAnim):
             return False
