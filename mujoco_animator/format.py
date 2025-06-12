@@ -31,6 +31,7 @@ from scipy.interpolate import CubicSpline, interp1d
 class Frame:
     length: float
     positions: list[float]
+    foot_clearance: float | None = None
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Frame):
@@ -75,18 +76,19 @@ class MjAnim:
     def save_json(self, path: Path) -> None:
         json_path = path.with_suffix(".json")
 
-        json_data: dict[str, int | list[dict[str, int | float | list[float]]]] = {
+        json_data: dict[str, int | list[dict[str, int | float | list[float] | None]]] = {
             "num_dofs": self.num_dofs,
             "num_frames": len(self.frames),
         }
 
-        json_frames: list[dict[str, int | float | list[float]]] = []
+        json_frames: list[dict[str, int | float | list[float] | None]] = []
         for i, frame in enumerate(self.frames):
             json_frames.append(
                 {
                     "index": i,
                     "length": frame.length,
                     "positions": frame.positions,
+                    "foot_clearance": frame.foot_clearance,
                 }
             )
         json_data["frames"] = json_frames
