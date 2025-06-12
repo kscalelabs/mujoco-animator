@@ -59,7 +59,10 @@ class MjAnimator(QMainWindow):
         self.output_path = output_path
 
         # If a template animation is provided, copy it to the output path
-        if template_path is not None and template_path.exists():
+        if self.template_path:
+            if not self.template_path.exists():
+                raise FileNotFoundError(f"Template path '{self.template_path}' does not exist")
+
             if self.output_path.exists():
                 raise FileExistsError(f"Output path '{self.output_path}' already exists")
             self.output_path.parent.mkdir(parents=True, exist_ok=True)
