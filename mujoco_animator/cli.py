@@ -29,10 +29,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Mujoco Animator")
     parser.add_argument("model", type=str)
     parser.add_argument("--output", type=Path, default=Path("output.mjanim"))
+    parser.add_argument("--template", type=Path, default=None)
     args = parser.parse_args()
 
     # Create and show animator
-    animator = MjAnimator(Path(args.model), args.output)
+    animator = MjAnimator(Path(args.model), args.output, args.template)
     animator.show()
 
     # Run the event loop
