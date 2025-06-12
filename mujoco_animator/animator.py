@@ -174,6 +174,7 @@ class MjAnimator(QMainWindow):
 
         self.user_control_keys = QLabel(
             "<b>G:</b> Add frame<br/>"
+            "<b>Backspace:</b> Delete frame<br/>"
             "<b>Space:</b> Play/stop animation<br/>"
             "<b>Q/A:</b> Adjust DOF<br/>"
             "<b>W/S:</b> Select DOF<br/>"
