@@ -38,12 +38,12 @@ class AnimationState:
 class MjAnimator(QMainWindow):
     """Main window for the Mujoco Animator tool."""
 
-    def __init__(self, model_path: Path, output_path: Path | None = None, template_path: Path | None = None) -> None:
+    def __init__(self, model_path: Path, output_path: Path, template_path: Path | None = None) -> None:
         """Initialize the animator.
 
         Args:
             model_path: Path to the Mujoco model file
-            output_path: Path to save the animation (optional)
+            output_path: Path to save the animation
             template_path: Path to a template animation to use for initialization (optional)
         """
         super().__init__()
@@ -58,15 +58,19 @@ class MjAnimator(QMainWindow):
         # Store output path
         self.output_path = output_path
 
+        self.template_path = template_path
+
         # If a template animation is provided, copy it to the output path
         if self.template_path:
             if not self.template_path.exists():
                 raise FileNotFoundError(f"Template path '{self.template_path}' does not exist")
 
-            if self.output_path.exists():
+            if self.output_path and self.output_path.exists():
                 raise FileExistsError(f"Output path '{self.output_path}' already exists")
+
             self.output_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(template_path, self.output_path)
+
+            shutil.copy(self.template_path, self.output_path)
 
         # Initialize cubic interpolation setting
         self.use_cubic_interp = False
